@@ -7,21 +7,21 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS (اگر از فرانت POST می‌زنی)
+// CORS اگر از فرانت POST می‌زنی
 app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*"); // اگر خواستی دامنه‌ات را بگذار
-  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST,GET,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type,x-webhook-secret");
   if (req.method === "OPTIONS") return res.sendStatus(204);
   next();
 });
 
-// ENV ها
+// ENV
 const BOT_TOKEN     = process.env.TELEGRAM_BOT_TOKEN;
-const CHAT_ID       = process.env.TELEGRAM_CHAT_ID;   // مقصد: کاربر/گروه/کانال
-const SHARED_SECRET = process.env.SHARED_SECRET || ""; // اختیاری
+const CHAT_ID       = process.env.TELEGRAM_CHAT_ID;
+const SHARED_SECRET = process.env.SHARED_SECRET || "";
 
-// ارسال به تلگرام با قابلیت Markdown
+// ارسال به تلگرام
 async function sendToTelegram(text, extra = {}, chatId = CHAT_ID) {
   const url  = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
   const body = new URLSearchParams({ chat_id: chatId, text, ...extra });
@@ -33,11 +33,24 @@ async function sendToTelegram(text, extra = {}, chatId = CHAT_ID) {
   }
 }
 
+// سلامتی سرویس
 app.get("/", (_req, res) => res.send("OK"));
 
+// GET تستی برای مرورگر (فقط با سکرت)
+app.get("/hook", async (req, res) => {
+  try {
+    if (SHARED_SECRET && req.query.secret !== SHARED_SECRET)
+      return res.status(401).send("Unauthorized");
+    await sendToTelegram("*Ping from GET /hook*", { parse_mode: "Markdown" });
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
+  }
+});
+
+// مسیر اصلی برای المنتور/فرانت (POST)
 app.post("/hook", async (req, res) => {
   try {
-    // محافظت ساده
     const incomingSecret =
       req.headers["x-webhook-secret"] || req.query.secret || (req.body && req.body.secret);
     if (SHARED_SECRET && incomingSecret !== SHARED_SECRET) {
