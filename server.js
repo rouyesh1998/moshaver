@@ -1,3 +1,12 @@
+
+// CORS برای درخواست‌های فرانت‌اند از دامنه‌ی سایت شما
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*'); // اگر خواستی دامنه‌ات را بگذار
+  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,x-webhook-secret');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 // server.js
 import express from "express";
 import fetch from "node-fetch";
@@ -68,3 +77,4 @@ app.post("/hook", async (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log("Server running on", PORT));
+
