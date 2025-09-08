@@ -1,22 +1,25 @@
-// server.js  (ESM)
+// server.js
 import express from "express";
 import fetch from "node-fetch";
 
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// توکن و chat_id رو از Environment بگیر
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const SHARED_SECRET = process.env.SHARED_SECRET; // اختیاری
 
-// ارسال پیام به تلگرام با امکان ارسال پارامترهای اضافه (مثل parse_mode) و chat_id سفارشی
+// ارسال پیام به تلگرام
 async function sendToTelegram(text, extra = {}, chatId = CHAT_ID) {
   const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
   const body = new URLSearchParams({ chat_id: chatId, text, ...extra });
   const res = await fetch(url, { method: "POST", body });
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Telegram error: ${err}`);
+    console.error("Telegram API error:", err);
+    throw new Error(err);
   }
 }
 
@@ -24,7 +27,7 @@ app.get("/", (_req, res) => res.send("OK"));
 
 app.post("/hook", async (req, res) => {
   try {
-    // اگر سکرت تعریف کرده‌ای، باید در هدر x-webhook-secret ارسال شود
+    // بررسی سکرت (اگر تعریف کردی)
     const incomingSecret =
       req.headers["x-webhook-secret"] ||
       req.query.secret ||
@@ -40,13 +43,13 @@ app.post("/hook", async (req, res) => {
     let note  = p.note  || "";
     let slot  = p.slot  || "";
 
-    // اگر در المنتور هنوز ID لاتین نذاشتی و لیبل‌ها فارسی هستند، این مپ کمک می‌کند:
+    // اگر در المنتور ID لاتین نذاشتی و فقط لیبل فارسیه
     if (!name  && p["نام و نام خانوادگی"])  name  = p["نام و نام خانوادگی"];
     if (!phone && p["شماره تماس"])           phone = p["شماره تماس"];
     if (!note  && p["توضیحات (اختیاری)"])    note  = p["توضیحات (اختیاری)"];
     if (!slot  && p["زمان انتخابی"])         slot  = p["زمان انتخابی"];
 
-    // پیام با Markdown
+    // ساخت پیام (با Markdown برای زیباتر شدن)
     const text =
       `*ثبت مشاوره جدید* 📞\n` +
       (name  ? `*نام:* ${name}\n`     : "") +
@@ -54,13 +57,12 @@ app.post("/hook", async (req, res) => {
       (slot  ? `*زمان:* ${slot}\n`   : "") +
       (note  ? `*توضیح:* ${note}`    : "");
 
-    // ارسال با Markdown
     await sendToTelegram(text, { parse_mode: "Markdown" });
 
     return res.json({ ok: true });
   } catch (e) {
-    console.error(e);
-    return res.status(500).json({ ok: false, error: "Internal error" });
+    console.error("Handler error:", e.message || e);
+    return res.status(500).json({ ok: false, error: e.message || "Internal error" });
   }
 });
 
