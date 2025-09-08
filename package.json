@@ -1,15 +1,13 @@
 {
   "name": "telegram-bridge",
   "version": "1.0.0",
-  "description": "Elementor form → Render → Telegram bridge",
+  "description": "Elementor → Render → Telegram bridge",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "render-build": "echo 'no build step'"
+    "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.19.2",
-    "node-fetch": "^3.3.2"
-  },
-  "type": "module"
+    "node-fetch": "^2.6.9"
+  }
 }
